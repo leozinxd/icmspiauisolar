@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Calendar, CheckCircle2, AlertCircle } from "lucide-react";
 
 interface EligibilityCheckProps {
-  onProceedToCalculator: () => void;
+  onProceedToCalculator: (installationDate: string) => void;
 }
 
 export function EligibilityCheck({ onProceedToCalculator }: EligibilityCheckProps) {
@@ -66,7 +66,7 @@ export function EligibilityCheck({ onProceedToCalculator }: EligibilityCheckProp
           {result && (
             <div className={`mt-6 p-4 rounded-lg border-l-4 ${
               result === "eligible" 
-                ? "bg-success/10 border-l-success text-success-foreground" 
+                ? "bg-success/10 border-l-success text-green-800" 
                 : "bg-yellow-50 border-l-yellow-400 text-yellow-800"
             }`}>
               <div className="flex items-center space-x-2">
@@ -84,7 +84,7 @@ export function EligibilityCheck({ onProceedToCalculator }: EligibilityCheckProp
               </div>
               {result === "eligible" && (
                 <Button 
-                  onClick={onProceedToCalculator}
+                  onClick={() => onProceedToCalculator(installationDate)}
                   className="mt-4 w-full bg-success hover:bg-success/90 text-success-foreground"
                 >
                   Ir para Calculadora

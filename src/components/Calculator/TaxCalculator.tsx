@@ -8,13 +8,13 @@ import { Calculator, ArrowLeft, DollarSign } from "lucide-react";
 
 interface TaxCalculatorProps {
   onBackToEligibility: () => void;
+  installationDate: string;
 }
 
-export function TaxCalculator({ onBackToEligibility }: TaxCalculatorProps) {
+export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalculatorProps) {
   const [supplyType, setSupplyType] = useState<"monofasico" | "trifasico" | "">("");
   const [injected, setInjected] = useState("");
   const [consumption, setConsumption] = useState("");
-  const [installationDate, setInstallationDate] = useState("");
   const [result, setResult] = useState<number | null>(null);
 
   const calculateMonthsDifference = (installationDate: string): number => {
@@ -37,7 +37,7 @@ export function TaxCalculator({ onBackToEligibility }: TaxCalculatorProps) {
   };
 
   const calculateReimbursement = () => {
-    if (!supplyType || !injected || !consumption || !installationDate) return;
+    if (!supplyType || !injected || !consumption) return;
     
     const injectedNum = parseInt(injected);
     const consumptionNum = parseInt(consumption);
@@ -138,25 +138,19 @@ export function TaxCalculator({ onBackToEligibility }: TaxCalculatorProps) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="installation-date-calc" className="text-sm font-medium">
-              Data de Instalação do Sistema
-            </Label>
-            <Input
-              id="installation-date-calc"
-              type="date"
-              value={installationDate}
-              onChange={(e) => setInstallationDate(e.target.value)}
-            />
-            {installationDate && (
-              <p className="text-xs text-muted-foreground">
-                Meses com energia solar: {calculateMonthsDifference(installationDate)}
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-sm font-medium text-muted-foreground">
+                Data de instalação: {new Date(installationDate).toLocaleDateString("pt-BR")}
               </p>
-            )}
+              <p className="text-xs text-muted-foreground">
+                Faturas incorretas: {calculateMonthsDifference(installationDate)}
+              </p>
+            </div>
           </div>
           
           <Button 
             onClick={calculateReimbursement}
-            disabled={!supplyType || !injected || !consumption || !installationDate}
+            disabled={!supplyType || !injected || !consumption}
             className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-primary-foreground"
           >
             <DollarSign className="w-4 h-4 mr-2" />

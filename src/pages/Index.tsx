@@ -6,8 +6,10 @@ type Screen = "eligibility" | "calculator";
 
 const Index = () => {
   const [currentScreen, setCurrentScreen] = useState<Screen>("eligibility");
+  const [installationDate, setInstallationDate] = useState<string>("");
 
-  const handleProceedToCalculator = () => {
+  const handleProceedToCalculator = (date: string) => {
+    setInstallationDate(date);
     setCurrentScreen("calculator");
   };
 
@@ -21,7 +23,7 @@ const Index = () => {
         <EligibilityCheck onProceedToCalculator={handleProceedToCalculator} />
       )}
       {currentScreen === "calculator" && (
-        <TaxCalculator onBackToEligibility={handleBackToEligibility} />
+        <TaxCalculator onBackToEligibility={handleBackToEligibility} installationDate={installationDate} />
       )}
     </>
   );
