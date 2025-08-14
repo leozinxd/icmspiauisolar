@@ -36,6 +36,20 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     return Math.min(monthsSinceInstallation, monthsSinceJune2024);
   };
 
+  const updateStats = (reimbursementValue: number) => {
+    const currentInvoices = localStorage.getItem('analyzedInvoices');
+    const currentDebt = localStorage.getItem('totalGovernmentDebt');
+    
+    const newInvoiceCount = (currentInvoices ? parseInt(currentInvoices) : 0) + 1;
+    const newTotalDebt = (currentDebt ? parseFloat(currentDebt) : 0) + reimbursementValue;
+    
+    localStorage.setItem('analyzedInvoices', newInvoiceCount.toString());
+    localStorage.setItem('totalGovernmentDebt', newTotalDebt.toString());
+    
+    // Dispatch custom event to update footer
+    window.dispatchEvent(new CustomEvent('statsUpdated'));
+  };
+
   const calculateReimbursement = () => {
     if (!supplyType || !injected || !consumption) return;
     
@@ -64,10 +78,11 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     const RD = (IFB + IBTB) * TL;
     
     setResult(RD);
+    updateStats(RD);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pb-32">
       <Card className="w-full max-w-lg shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <Button

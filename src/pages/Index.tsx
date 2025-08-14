@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EligibilityCheck } from "@/components/Calculator/EligibilityCheck";
 import { TaxCalculator } from "@/components/Calculator/TaxCalculator";
+import { Footer } from "@/components/Footer";
 
 type Screen = "eligibility" | "calculator";
 
@@ -25,6 +26,7 @@ const Index = () => {
       {currentScreen === "calculator" && (
         <TaxCalculator onBackToEligibility={handleBackToEligibility} installationDate={installationDate} />
       )}
+      <Footer />
     </>
   );
 };
