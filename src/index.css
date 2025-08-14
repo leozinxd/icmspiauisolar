@@ -17,11 +17,19 @@ All colors MUST be HSL.
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    --primary: 140 80% 25%;
+    --primary-foreground: 0 0% 98%;
+    --primary-hover: 140 85% 30%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    --secondary: 140 45% 96%;
+    --secondary-foreground: 140 80% 25%;
+
+    --success: 142 76% 36%;
+    --success-foreground: 0 0% 98%;
+    
+    --gradient-primary: linear-gradient(135deg, hsl(140 80% 25%), hsl(140 85% 30%));
+    --gradient-hero: linear-gradient(135deg, hsl(140 80% 25%), hsl(120 70% 40%));
+    --gradient-background: linear-gradient(180deg, hsl(140 45% 98%), hsl(0 0% 100%));
 
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
