@@ -33,37 +33,39 @@ export function Footer() {
   }, []);
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 bg-background/80 backdrop-blur-sm border-t">
-      <div className="container mx-auto p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-          <Card className="p-4 text-center">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <FileText className="w-5 h-5 text-primary" />
-              <span className="text-sm font-medium text-muted-foreground">
+    <header className="bg-background/95 backdrop-blur-sm border-b border-border z-50">
+      <div className="container mx-auto px-4 py-4">
+        <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
+          <Card className="text-center">
+            <div className="p-4">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <FileText className="w-5 h-5 text-primary" />
+                <span className="text-2xl font-bold text-primary">{analyzedInvoices}</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
                 Faturas Analisadas
-              </span>
+              </p>
             </div>
-            <p className="text-2xl font-bold text-primary">
-              {analyzedInvoices.toLocaleString('pt-BR')}
-            </p>
           </Card>
           
-          <Card className="p-4 text-center">
-            <div className="flex items-center justify-center space-x-2 mb-2">
-              <AlertTriangle className="w-5 h-5 text-destructive" />
-              <span className="text-sm font-medium text-muted-foreground">
+          <Card className="text-center">
+            <div className="p-4">
+              <div className="flex items-center justify-center space-x-2 mb-2">
+                <AlertTriangle className="w-5 h-5 text-destructive" />
+              </div>
+              <p className="text-xs font-medium text-destructive mb-1">
                 ATÉ AGORA O GOVERNO ESTÁ DEVENDO
-              </span>
+              </p>
+              <p className="text-lg font-bold text-destructive">
+                {new Intl.NumberFormat("pt-BR", {
+                  style: "currency",
+                  currency: "BRL",
+                }).format(totalDebt)}
+              </p>
             </div>
-            <p className="text-2xl font-bold text-destructive">
-              {new Intl.NumberFormat("pt-BR", {
-                style: "currency",
-                currency: "BRL",
-              }).format(totalDebt)}
-            </p>
           </Card>
         </div>
       </div>
-    </footer>
+    </header>
   );
 }

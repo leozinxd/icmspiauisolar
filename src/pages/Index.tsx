@@ -20,13 +20,13 @@ const Index = () => {
 
   return (
     <>
+      <Footer />
       {currentScreen === "eligibility" && (
         <EligibilityCheck onProceedToCalculator={handleProceedToCalculator} />
       )}
       {currentScreen === "calculator" && (
         <TaxCalculator onBackToEligibility={handleBackToEligibility} installationDate={installationDate} />
       )}
-      <Footer />
     </>
   );
 };

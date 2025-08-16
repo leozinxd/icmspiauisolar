@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calculator, ArrowLeft, DollarSign } from "lucide-react";
+import { calculateMonetaryCorrection } from "@/lib/ipca";
 
 interface TaxCalculatorProps {
   onBackToEligibility: () => void;
@@ -54,35 +55,52 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     if (!supplyType || !injected || !consumption) return;
     
     const injectedNum = parseInt(injected);
-    const consumptionNum = parseInt(consumption);
+    const consumptionNum = parseInt(consumption); // Valor médio mensal informado
     
-    // CC = Consumo Compensado
-    const CC = Math.min(consumptionNum, injectedNum);
+    const installationDateObj = new Date(installationDate);
+    const currentDate = new Date();
+    const monthsDifference = calculateMonthsDifference(installationDate);
     
-    // BTB = Benefício Tarifário Bruto
-    const BTB = CC * 0.73;
+    let totalCorrectedValue = 0;
     
-    // IBTB = ICMS BTB
-    const IBTB = BTB * 0.2215;
+    // Calcular para cada mês desde a instalação
+    for (let i = 0; i < monthsDifference; i++) {
+      const monthDate = new Date(installationDateObj);
+      monthDate.setMonth(monthDate.getMonth() + i);
+      
+      // CC = Consumo Compensado (usar a média informada)
+      const CC = Math.min(consumptionNum, injectedNum);
+      
+      // BTB = Benefício Tarifário Bruto
+      const BTB = CC * 0.73;
+      
+      // IBTB = ICMS BTB
+      const IBTB = BTB * 0.2215;
+      
+      // FB = Fio B
+      const FB = CC * 0.27;
+      
+      // IFB = ICMS Fio B
+      const IFB = FB * 0.2215;
+      
+      // Valor base para este mês
+      const monthlyValue = IFB + IBTB;
+      
+      // Aplicar correção monetária desde este mês até hoje
+      const correctedMonthlyValue = calculateMonetaryCorrection(monthlyValue, monthDate, currentDate);
+      
+      totalCorrectedValue += correctedMonthlyValue;
+    }
     
-    // FB = Fio B
-    const FB = CC * 0.27;
+    // Como se trata de indenização, o valor é dobrado
+    const finalValue = totalCorrectedValue * 2;
     
-    // IFB = ICMS Fio B
-    const IFB = FB * 0.2215;
-    
-    // TL = Tempo Limite
-    const TL = calculateMonthsDifference(installationDate);
-    
-    // RD = Ressarcimento Disponível
-    const RD = (IFB + IBTB) * TL;
-    
-    setResult(RD);
-    updateStats(RD);
+    setResult(finalValue);
+    updateStats(finalValue);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pb-32">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pt-32">
       <Card className="w-full max-w-lg shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <Button
@@ -139,7 +157,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
             
             <div className="space-y-2">
               <Label htmlFor="consumption" className="text-sm font-medium">
-                Consumo (kWh)
+                Consumo Médio Mensal (kWh)
               </Label>
               <Input
                 id="consumption"
@@ -149,6 +167,9 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
                 placeholder="0"
                 min="0"
               />
+              <p className="text-xs text-muted-foreground">
+                Informe o consumo médio mensal
+              </p>
             </div>
           </div>
           
@@ -176,7 +197,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
             <div className="mt-6 p-6 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
               <div className="text-center space-y-2">
                 <p className="text-sm font-medium text-success">
-                  Ressarcimento Disponível
+                  Indenização Disponível
                 </p>
                 <p className="text-3xl font-bold text-success">
                   {new Intl.NumberFormat("pt-BR", {
@@ -185,7 +206,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
                   }).format(result)}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  *Valor estimado baseado nos dados informados
+                  *Valor com correção monetária (IPCA) e dobrado por ser indenização
                 </p>
               </div>
             </div>
