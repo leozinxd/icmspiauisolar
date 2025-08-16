@@ -14,7 +14,80 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      calculation_details: {
+        Row: {
+          base_value: number
+          calculation_id: string
+          corrected_value: number
+          created_at: string
+          id: string
+          ipca_rate: number
+          month_year: string
+        }
+        Insert: {
+          base_value: number
+          calculation_id: string
+          corrected_value: number
+          created_at?: string
+          id?: string
+          ipca_rate: number
+          month_year: string
+        }
+        Update: {
+          base_value?: number
+          calculation_id?: string
+          corrected_value?: number
+          created_at?: string
+          id?: string
+          ipca_rate?: number
+          month_year?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "calculation_details_calculation_id_fkey"
+            columns: ["calculation_id"]
+            isOneToOne: false
+            referencedRelation: "calculations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      calculations: {
+        Row: {
+          consumption: number
+          created_at: string
+          id: string
+          injected_energy: number
+          installation_date: string
+          months_count: number
+          supply_type: string
+          total_amount: number
+          updated_at: string
+        }
+        Insert: {
+          consumption: number
+          created_at?: string
+          id?: string
+          injected_energy: number
+          installation_date: string
+          months_count: number
+          supply_type: string
+          total_amount: number
+          updated_at?: string
+        }
+        Update: {
+          consumption?: number
+          created_at?: string
+          id?: string
+          injected_energy?: number
+          installation_date?: string
+          months_count?: number
+          supply_type?: string
+          total_amount?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
