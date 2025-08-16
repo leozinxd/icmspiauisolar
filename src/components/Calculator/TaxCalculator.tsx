@@ -19,9 +19,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
   const [injected, setInjected] = useState("");
   const [consumption, setConsumption] = useState("");
   const [result, setResult] = useState<number | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [monthlyDetails, setMonthlyDetails] = useState<any[]>([]);
   const [calculationId, setCalculationId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const calculateMonthsDifference = (installationDate: string): number => {
     const installation = new Date(installationDate);
@@ -154,7 +153,6 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     }
     
     setResult(finalValue);
-    setMonthlyDetails(details);
     await updateStats(finalValue);
   };
 
@@ -245,11 +243,11 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           
           <Button 
             onClick={calculateReimbursement}
-            disabled={!supplyType || !injected || !consumption}
+            disabled={!supplyType || !injected || !consumption || loading}
             className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-primary-foreground"
           >
             <DollarSign className="w-4 h-4 mr-2" />
-            VERIFICAR VALOR DISPONÍVEL
+            {loading ? "CALCULANDO..." : "VERIFICAR VALOR DISPONÍVEL"}
           </Button>
           
           {result !== null && (
@@ -271,25 +269,10 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
                 </div>
               </div>
               
-              <Button
-                variant="outline"
-                onClick={() => setShowDetails(true)}
-                className="w-full mt-4"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Ver Detalhamento Mensal
-              </Button>
+              <CalculationDetails calculationId={calculationId} />
             </>
           )}
         </CardContent>
-        
-        <CalculationDetails
-          isOpen={showDetails}
-          onClose={() => setShowDetails(false)}
-          installationDate={installationDate}
-          monthlyDetails={monthlyDetails}
-          totalAmount={result || 0}
-        />
       </Card>
     </div>
   );
