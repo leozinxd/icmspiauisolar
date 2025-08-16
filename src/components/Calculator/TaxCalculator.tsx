@@ -4,8 +4,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, ArrowLeft, DollarSign } from "lucide-react";
-import { calculateMonetaryCorrection } from "@/lib/ipca";
+import { Calculator, ArrowLeft, DollarSign, FileText } from "lucide-react";
+import { calculateMonetaryCorrection, getIPCARate } from "@/lib/ipca";
+import { CalculationDetails } from "./CalculationDetails";
+import { supabase } from "@/integrations/supabase/client";
 
 interface TaxCalculatorProps {
   onBackToEligibility: () => void;
@@ -17,6 +19,9 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
   const [injected, setInjected] = useState("");
   const [consumption, setConsumption] = useState("");
   const [result, setResult] = useState<number | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
+  const [monthlyDetails, setMonthlyDetails] = useState<any[]>([]);
+  const [calculationId, setCalculationId] = useState<string | null>(null);
 
   const calculateMonthsDifference = (installationDate: string): number => {
     const installation = new Date(installationDate);
@@ -37,7 +42,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     return Math.min(monthsSinceInstallation, monthsSinceJune2024);
   };
 
-  const updateStats = (reimbursementValue: number) => {
+  const updateStats = async (reimbursementValue: number) => {
+    // Manter localStorage por compatibilidade
     const currentInvoices = localStorage.getItem('analyzedInvoices');
     const currentDebt = localStorage.getItem('totalGovernmentDebt');
     
@@ -51,7 +57,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     window.dispatchEvent(new CustomEvent('statsUpdated'));
   };
 
-  const calculateReimbursement = () => {
+  const calculateReimbursement = async () => {
     if (!supplyType || !injected || !consumption) return;
     
     const injectedNum = parseInt(injected);
@@ -62,6 +68,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     const monthsDifference = calculateMonthsDifference(installationDate);
     
     let totalCorrectedValue = 0;
+    const details: any[] = [];
     
     // Calcular para cada mês desde a instalação
     for (let i = 0; i < monthsDifference; i++) {
@@ -89,14 +96,66 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
       // Aplicar correção monetária desde este mês até hoje
       const correctedMonthlyValue = calculateMonetaryCorrection(monthlyValue, monthDate, currentDate);
       
+      // Taxa IPCA acumulada para este período
+      const ipcaRate = getIPCARate(monthDate.getFullYear(), monthDate.getMonth() + 1);
+      
+      details.push({
+        monthYear: monthDate,
+        baseValue: monthlyValue,
+        correctedValue: correctedMonthlyValue,
+        ipcaRate: correctedMonthlyValue / monthlyValue - 1 // Taxa efetiva aplicada
+      });
+      
       totalCorrectedValue += correctedMonthlyValue;
     }
     
     // Como se trata de indenização, o valor é dobrado
     const finalValue = totalCorrectedValue * 2;
     
+    try {
+      // Salvar no Supabase
+      const { data: calculationData, error: calculationError } = await supabase
+        .from('calculations')
+        .insert({
+          supply_type: supplyType,
+          injected_energy: injectedNum,
+          consumption: consumptionNum,
+          installation_date: installationDate,
+          total_amount: finalValue,
+          months_count: monthsDifference
+        })
+        .select()
+        .single();
+
+      if (calculationError) {
+        console.error('Erro ao salvar cálculo:', calculationError);
+      } else if (calculationData) {
+        setCalculationId(calculationData.id);
+        
+        // Salvar detalhes mensais
+        const detailsToInsert = details.map(detail => ({
+          calculation_id: calculationData.id,
+          month_year: detail.monthYear.toISOString().split('T')[0],
+          base_value: detail.baseValue,
+          corrected_value: detail.correctedValue,
+          ipca_rate: detail.ipcaRate
+        }));
+        
+        const { error: detailsError } = await supabase
+          .from('calculation_details')
+          .insert(detailsToInsert);
+          
+        if (detailsError) {
+          console.error('Erro ao salvar detalhes:', detailsError);
+        }
+      }
+    } catch (error) {
+      console.error('Erro ao conectar com o banco:', error);
+    }
+    
     setResult(finalValue);
-    updateStats(finalValue);
+    setMonthlyDetails(details);
+    await updateStats(finalValue);
   };
 
   return (
@@ -194,24 +253,43 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           </Button>
           
           {result !== null && (
-            <div className="mt-6 p-6 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
-              <div className="text-center space-y-2">
-                <p className="text-sm font-medium text-success">
-                  Indenização Disponível
-                </p>
-                <p className="text-3xl font-bold text-success">
-                  {new Intl.NumberFormat("pt-BR", {
-                    style: "currency",
-                    currency: "BRL",
-                  }).format(result)}
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  *Valor com correção monetária (IPCA) e dobrado por ser indenização
-                </p>
+            <>
+              <div className="mt-6 p-6 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
+                <div className="text-center space-y-2">
+                  <p className="text-sm font-medium text-success">
+                    Indenização Disponível
+                  </p>
+                  <p className="text-3xl font-bold text-success">
+                    {new Intl.NumberFormat("pt-BR", {
+                      style: "currency",
+                      currency: "BRL",
+                    }).format(result)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    *Valor com correção monetária (IPCA) e dobrado por ser indenização
+                  </p>
+                </div>
               </div>
-            </div>
+              
+              <Button
+                variant="outline"
+                onClick={() => setShowDetails(true)}
+                className="w-full mt-4"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Ver Detalhamento Mensal
+              </Button>
+            </>
           )}
         </CardContent>
+        
+        <CalculationDetails
+          isOpen={showDetails}
+          onClose={() => setShowDetails(false)}
+          installationDate={installationDate}
+          monthlyDetails={monthlyDetails}
+          totalAmount={result || 0}
+        />
       </Card>
     </div>
   );
