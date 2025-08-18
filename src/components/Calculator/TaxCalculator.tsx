@@ -25,7 +25,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
   const calculateMonthsDifference = (installationDate: string): number => {
     const installation = new Date(installationDate);
     const currentDate = new Date();
-    const june2024 = new Date("2024-06-01");
+    const june2024 = new Date("2024-06-02");
     
     // Data de início elegível: maior entre instalação e junho de 2024
     const startDate = installation > june2024 ? installation : june2024;
@@ -68,7 +68,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     const details: any[] = [];
     
     // Data de início elegível: a partir de junho de 2024
-    const june2024 = new Date("2024-06-01");
+    const june2024 = new Date("2024-06-02");
     const startDate = installationDateObj < june2024 ? installationDateObj : (installationDateObj > june2024 ? installationDateObj : june2024);
     
     // Calcular para cada mês elegível
