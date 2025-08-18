@@ -19,10 +19,9 @@ interface CalculationDetail {
 
 interface CalculationDetailsProps {
   calculationId: string | null;
-  injectedEnergy: number;
 }
 
-export function CalculationDetails({ calculationId, injectedEnergy }: CalculationDetailsProps) {
+export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
   const [details, setDetails] = useState<CalculationDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -83,7 +82,7 @@ export function CalculationDetails({ calculationId, injectedEnergy }: Calculatio
       const detail = details.find(d => d.id === detailId);
       if (!detail) return;
 
-      const CC = Math.min(newConsumption, injectedEnergy);
+      const CC = newConsumption;
       const BTB = CC * 0.73;
       const IBTB = BTB * 0.2215;
       const FB = CC * 0.27;
@@ -215,7 +214,7 @@ export function CalculationDetails({ calculationId, injectedEnergy }: Calculatio
                      <TableHeader>
                        <TableRow>
                          <TableHead>Mês/Ano</TableHead>
-                         <TableHead className="text-right">Consumo (kWh)</TableHead>
+                         <TableHead className="text-right">Consumo Compensado (kWh)</TableHead>
                          <TableHead className="text-right">Valor Base</TableHead>
                          <TableHead className="text-right">Taxa IPCA</TableHead>
                          <TableHead className="text-right">Valor Corrigido</TableHead>
