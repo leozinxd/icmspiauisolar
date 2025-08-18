@@ -13,7 +13,7 @@ export function Footer() {
     try {
       const { data, count, error } = await supabase
         .from('calculations')
-        .select('total_amount, total:total_amount.sum()', { count: 'exact' });
+        .select('total_amount.sum()', { count: 'exact' });
       console.log(data)
 
       if (error) throw error;
