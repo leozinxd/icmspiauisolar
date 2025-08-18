@@ -79,9 +79,10 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
       // Aplicar variação de ±20% no consumo para simular realidade
       const variation = 0.8 + (Math.random() * 0.4); // Entre 0.8 e 1.2 (±20%)
       const consumption = Math.round(comsumptionNum * variation);
+      const injected = Math.round(injectedNum * variation);
       
       // CC = Consumo Compensado (usar o consumo variado)
-      const CC = Math.min(consumption, injectedNum);
+      const CC = Math.min(consumption, injected);
       const monthlyConsumption = CC;
       
       // BTB = Benefício Tarifário Bruto
