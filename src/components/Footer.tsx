@@ -16,8 +16,8 @@ export function Footer() {
         .select('total_amount.sum()', { count: 'exact' });
 
       if (error) throw error;
-      setAnalyzedInvoices(count);
-      setTotalDebt(parseFloat(data[0].sum));
+      setAnalyzedInvoices(count || 0);
+      setTotalDebt(data?.[0]?.sum ? parseFloat(data[0].sum) : 0);
     } catch (error) {
       console.error('Erro ao buscar informações:', error);
     } finally {
