@@ -78,10 +78,11 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
       
       // Aplicar variação de ±20% no consumo para simular realidade
       const variation = 0.8 + (Math.random() * 0.4); // Entre 0.8 e 1.2 (±20%)
-      const monthlyConsumption = Math.round(consumptionNum * variation);
+      const consumption = Math.round(comsumptionNum * variation);
       
       // CC = Consumo Compensado (usar o consumo variado)
-      const CC = Math.min(monthlyConsumption, injectedNum);
+      const CC = Math.min(consumption, injectedNum);
+      const monthlyConsumption = CC;
       
       // BTB = Benefício Tarifário Bruto
       const BTB = CC * 0.73;
@@ -109,7 +110,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
         baseValue: monthlyValue,
         correctedValue: correctedMonthlyValue,
         ipcaRate: correctedMonthlyValue / monthlyValue - 1, // Taxa efetiva aplicada
-        monthlyConsumption: monthlyConsumption // Armazenar o consumo específico do mês
+        monthlyConsumption: monthlyConsumption // Armazenar o consumo compensado específico do mês
       });
       
       totalCorrectedValue += correctedMonthlyValue;
