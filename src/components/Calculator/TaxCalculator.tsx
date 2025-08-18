@@ -168,7 +168,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
 
   const formatDate = (date) => {
     const dateObj = new Date(date);
-    return dateObj.setDate(dateObj.getDate() + 1).toLocaleDateString("pt-BR")
+    dateObj.setDate(dateObj.getDate() + 1)
+    return dateObj.toLocaleDateString("pt-BR")
   }
 
   return (
