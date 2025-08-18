@@ -1,35 +1,32 @@
 import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { FileText, AlertTriangle } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 export function Footer() {
   const [analyzedInvoices, setAnalyzedInvoices] = useState(0);
   const [totalDebt, setTotalDebt] = useState(0);
+  const [loading, setLoading] = useState(false);
+  
+  const loadStats = async () => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('calculations')
+        .select('SUM(total_amount) as totalDebt, COUNT(*) as invoices');
+
+      if (error) throw error;
+      setAnalyzedInvoices(parseInt(data.invoices));
+      setTotalDebt(parseFloat(data.totalDebt));
+    } catch (error) {
+      console.error('Erro ao buscar informações:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadStats = () => {
-      const invoices = localStorage.getItem('analyzedInvoices');
-      const debt = localStorage.getItem('totalGovernmentDebt');
-      
-      setAnalyzedInvoices(invoices ? parseInt(invoices) : 0);
-      setTotalDebt(debt ? parseFloat(debt) : 0);
-    };
-
     loadStats();
-    
-    // Listen for storage changes
-    const handleStorageChange = () => {
-      loadStats();
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    // Custom event for same-tab updates
-    window.addEventListener('statsUpdated', handleStorageChange);
-    
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-      window.removeEventListener('statsUpdated', handleStorageChange);
-    };
   }, []);
 
   return (
