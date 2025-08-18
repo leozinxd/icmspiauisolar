@@ -11,12 +11,12 @@ export function Footer() {
   const loadStats = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data, count, error } = await supabase
         .from('calculations')
-        .select('totalDebt:total_amount.sum(), invoices:total_amount.count()');
+        .select('totalDebt:total_amount.sum()', { count: 'exact', head: true });
 
       if (error) throw error;
-      setAnalyzedInvoices(parseInt(data.invoices));
+      setAnalyzedInvoices(parseInt(count));
       setTotalDebt(parseFloat(data.totalDebt));
     } catch (error) {
       console.error('Erro ao buscar informações:', error);
