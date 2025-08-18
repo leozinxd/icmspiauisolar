@@ -78,7 +78,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
       
       // Aplicar variação de ±20% no consumo para simular realidade
       const variation = 0.8 + (Math.random() * 0.4); // Entre 0.8 e 1.2 (±20%)
-      const consumptionVar = Math.round(comsumptionNum * variation);
+      const consumptionVar = Math.round(consumptionNum * variation);
       const injectedVar = Math.round(injectedNum * variation);
       
       // CC = Consumo Compensado (usar o consumo variado)
