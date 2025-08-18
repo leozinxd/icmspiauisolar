@@ -13,7 +13,7 @@ export function Footer() {
     try {
       const { data, error } = await supabase
         .from('calculations')
-        .select('SUM(total_amount) as totalDebt, COUNT(*) as invoices');
+        .select('totalDebt:total_amount.sum(), invoices:total_amount.count()');
 
       if (error) throw error;
       setAnalyzedInvoices(parseInt(data.invoices));
