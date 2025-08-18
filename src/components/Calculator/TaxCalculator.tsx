@@ -69,7 +69,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     
     // Data de início elegível: a partir de junho de 2024
     const june2024 = new Date("2024-06-02");
-    const startDate = installationDateObj < june2024 ? installationDateObj : (installationDateObj > june2024 ? installationDateObj : june2024);
+    const startDate = installationDateObj > june2024 ? installationDateObj : june2024;
     
     // Calcular para cada mês elegível
     for (let i = 0; i < monthsDifference; i++) {
