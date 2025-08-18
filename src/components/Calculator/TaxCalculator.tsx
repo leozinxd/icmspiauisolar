@@ -244,7 +244,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
                 Data de instalação: {new Date(installationDate).toLocaleDateString("pt-BR")}
               </p>
               <p className="text-xs text-muted-foreground">
-                Faturas incorretas: {calculateMonthsDifference(installationDate)}
+                Faturas corrigidas: {calculateMonthsDifference(installationDate)}
               </p>
             </div>
           </div>
