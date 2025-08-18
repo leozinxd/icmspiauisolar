@@ -21,6 +21,8 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CalculationDetails } from '@/components/Calculator/CalculationDetails';
+import { jsPDF } from 'jspdf';
+import { autoTable } from 'jspdf-autotable';
 
 interface Calculation {
   id: string;
@@ -108,10 +110,6 @@ export default function Dashboard() {
 
   const downloadPDF = async (calculation: Calculation) => {
     try {
-      // Importar jsPDF dinamicamente para evitar problemas de SSR
-      const { default: jsPDF } = await import('jspdf');
-      await import('jspdf-autotable');
-      
       // Buscar detalhes do cálculo
       const { data: details, error } = await supabase
         .from('calculation_details')
@@ -148,7 +146,7 @@ export default function Dashboard() {
       ]) || [];
 
       // @ts-ignore - jsPDF autoTable plugin
-      doc.autoTable({
+      autoTable(doc, {
         startY: 120,
         head: [['Mês/Ano', 'Consumo (kWh)', 'Valor Base', 'Taxa IPCA', 'Valor Corrigido', 'Diferença']],
         body: tableData,
