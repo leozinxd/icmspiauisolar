@@ -66,6 +66,7 @@ export type Database = {
           supply_type: string
           total_amount: number
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           consumption: number
@@ -77,6 +78,7 @@ export type Database = {
           supply_type: string
           total_amount: number
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           consumption?: number
@@ -88,6 +90,34 @@ export type Database = {
           supply_type?: string
           total_amount?: number
           updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

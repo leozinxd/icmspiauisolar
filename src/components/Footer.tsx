@@ -17,7 +17,7 @@ export function Footer() {
 
       if (error) throw error;
       setAnalyzedInvoices(count || 0);
-      setTotalDebt(data?.[0]?.sum ? parseFloat(data[0].sum) : 0);
+      setTotalDebt(data?.[0]?.sum ? parseFloat(String(data[0].sum)) : 0);
     } catch (error) {
       console.error('Erro ao buscar informações:', error);
     } finally {

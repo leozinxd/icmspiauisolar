@@ -107,6 +107,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     
     try {
       // Salvar no Supabase
+      const { data: { user } } = await supabase.auth.getUser();
+      
       const { data: calculationData, error: calculationError } = await supabase
         .from('calculations')
         .insert({
@@ -115,7 +117,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           consumption: consumptionNum,
           installation_date: installationDate,
           total_amount: finalValue,
-          months_count: monthsDifference
+          months_count: monthsDifference,
+          user_id: user?.id || null
         })
         .select()
         .single();
