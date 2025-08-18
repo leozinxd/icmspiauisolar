@@ -14,11 +14,10 @@ export function Footer() {
       const { data, count, error } = await supabase
         .from('calculations')
         .select('total_amount.sum()', { count: 'exact' });
-      console.log(data)
 
       if (error) throw error;
-      setAnalyzedInvoices(parseInt(count));
-      setTotalDebt(parseFloat(data.totalDebt));
+      setAnalyzedInvoices(count);
+      setTotalDebt(parseFloat(data[0].sum));
     } catch (error) {
       console.error('Erro ao buscar informações:', error);
     } finally {
