@@ -19,9 +19,10 @@ interface CalculationDetail {
 
 interface CalculationDetailsProps {
   calculationId: string | null;
+  injectedEnergy: number;
 }
 
-export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
+export function CalculationDetails({ calculationId, injectedEnergy }: CalculationDetailsProps) {
   const [details, setDetails] = useState<CalculationDetail[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -82,8 +83,6 @@ export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
       const detail = details.find(d => d.id === detailId);
       if (!detail) return;
 
-      // Usar energia injetada fixa (assumindo 1000 kWh como exemplo)
-      const injectedEnergy = 1000; // Idealmente buscar do calculation original
       const CC = Math.min(newConsumption, injectedEnergy);
       const BTB = CC * 0.73;
       const IBTB = BTB * 0.2215;
