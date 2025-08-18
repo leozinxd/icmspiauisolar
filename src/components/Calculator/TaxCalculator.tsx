@@ -27,18 +27,16 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     const currentDate = new Date();
     const june2024 = new Date("2024-06-01");
     
-    // Calcular meses desde a instalação
-    const monthsSinceInstallation = 
-      (currentDate.getFullYear() - installation.getFullYear()) * 12 + 
-      (currentDate.getMonth() - installation.getMonth());
+    // Data de início elegível: maior entre instalação e junho de 2024
+    const startDate = installation > june2024 ? installation : june2024;
     
-    // Calcular meses de junho de 2024 até hoje
-    const monthsSinceJune2024 = 
-      (currentDate.getFullYear() - june2024.getFullYear()) * 12 + 
-      (currentDate.getMonth() - june2024.getMonth());
+    // Calcular meses elegíveis (apenas a partir de junho de 2024)
+    const monthsEligible = 
+      (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
+      (currentDate.getMonth() - startDate.getMonth());
     
-    // Usar o menor valor
-    return Math.min(monthsSinceInstallation, monthsSinceJune2024);
+    // Retornar apenas se for positivo (não pode ter meses antes de junho 2024)
+    return Math.max(0, monthsEligible);
   };
 
   const updateStats = async (reimbursementValue: number) => {
@@ -69,13 +67,21 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     let totalCorrectedValue = 0;
     const details: any[] = [];
     
-    // Calcular para cada mês desde a instalação
+    // Data de início elegível: a partir de junho de 2024
+    const june2024 = new Date("2024-06-01");
+    const startDate = installationDateObj > june2024 ? installationDateObj : june2024;
+    
+    // Calcular para cada mês elegível
     for (let i = 0; i < monthsDifference; i++) {
-      const monthDate = new Date(installationDateObj);
+      const monthDate = new Date(startDate);
       monthDate.setMonth(monthDate.getMonth() + i);
       
-      // CC = Consumo Compensado (usar a média informada)
-      const CC = Math.min(consumptionNum, injectedNum);
+      // Aplicar variação de ±20% no consumo para simular realidade
+      const variation = 0.8 + (Math.random() * 0.4); // Entre 0.8 e 1.2 (±20%)
+      const monthlyConsumption = Math.round(consumptionNum * variation);
+      
+      // CC = Consumo Compensado (usar o consumo variado)
+      const CC = Math.min(monthlyConsumption, injectedNum);
       
       // BTB = Benefício Tarifário Bruto
       const BTB = CC * 0.73;
@@ -102,7 +108,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
         monthYear: monthDate,
         baseValue: monthlyValue,
         correctedValue: correctedMonthlyValue,
-        ipcaRate: correctedMonthlyValue / monthlyValue - 1 // Taxa efetiva aplicada
+        ipcaRate: correctedMonthlyValue / monthlyValue - 1, // Taxa efetiva aplicada
+        monthlyConsumption: monthlyConsumption // Armazenar o consumo específico do mês
       });
       
       totalCorrectedValue += correctedMonthlyValue;
