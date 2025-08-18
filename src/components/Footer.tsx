@@ -14,6 +14,7 @@ export function Footer() {
       const { data, count, error } = await supabase
         .from('calculations')
         .select('total_amount, total:total_amount.sum()', { count: 'exact' });
+      console.log(data)
 
       if (error) throw error;
       setAnalyzedInvoices(parseInt(count));
