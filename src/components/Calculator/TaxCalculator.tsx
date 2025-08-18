@@ -277,7 +277,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
                 </div>
               </div>
               
-              <CalculationDetails calculationId={calculationId} injectedEnergy={parseInt(injected)} />
+              <CalculationDetails calculationId={calculationId} />
             </>
           )}
         </CardContent>
