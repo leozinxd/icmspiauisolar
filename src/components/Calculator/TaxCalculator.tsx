@@ -166,6 +166,11 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     await updateStats(finalValue);
   };
 
+  const formatDate = (date) => {
+    const dateObj = new Date(date);
+    return dateObj.setDate(dateObj.getDate() + 1).toLocaleDateString("pt-BR")
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pt-32">
       <Card className="w-full max-w-lg shadow-xl border-0 bg-white/80 backdrop-blur-sm">
@@ -243,7 +248,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           <div className="space-y-2">
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-sm font-medium text-muted-foreground">
-                Data de instalação: {new Date(installationDate).toLocaleDateString("pt-BR")}
+                Data de instalação: {formatDate(installationDate)}
               </p>
               <p className="text-xs text-muted-foreground">
                 Faturas corrigidas: {calculateMonthsDifference(installationDate)}
