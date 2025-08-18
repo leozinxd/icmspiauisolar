@@ -3,8 +3,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { FileText, TrendingUp } from "lucide-react";
+import { FileText, TrendingUp, Edit2, Save, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getIPCARate } from "@/lib/ipca";
+import { Input } from "@/components/ui/input";
 
 interface CalculationDetail {
   id: string;
@@ -12,6 +14,7 @@ interface CalculationDetail {
   base_value: number;
   corrected_value: number;
   ipca_rate: number;
+  monthly_consumption: number;
 }
 
 interface CalculationDetailsProps {
@@ -21,6 +24,8 @@ interface CalculationDetailsProps {
 export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
   const [details, setDetails] = useState<CalculationDetail[]>([]);
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editValue, setEditValue] = useState<number>(0);
 
   useEffect(() => {
     if (calculationId) {
@@ -69,6 +74,81 @@ export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
       year: 'numeric', 
       month: 'long'
     });
+  };
+
+  const updateConsumption = async (detailId: string, newConsumption: number) => {
+    try {
+      // Recalcular valores baseados no novo consumo
+      const detail = details.find(d => d.id === detailId);
+      if (!detail) return;
+
+      // Usar energia injetada fixa (assumindo 1000 kWh como exemplo)
+      const injectedEnergy = 1000; // Idealmente buscar do calculation original
+      const CC = Math.min(newConsumption, injectedEnergy);
+      const BTB = CC * 0.73;
+      const IBTB = BTB * 0.2215;
+      const FB = CC * 0.27;
+      const IFB = FB * 0.2215;
+      const newBaseValue = IFB + IBTB;
+
+      // Recalcular correção monetária
+      const monthDate = new Date(detail.month_year);
+      const currentDate = new Date();
+      let correctedValue = newBaseValue;
+      let tempDate = new Date(monthDate);
+      
+      while (tempDate < currentDate) {
+        const year = tempDate.getFullYear();
+        const month = tempDate.getMonth() + 1;
+        const ipcaRate = getIPCARate(year, month);
+        correctedValue = correctedValue * (1 + ipcaRate);
+        tempDate.setMonth(tempDate.getMonth() + 1);
+      }
+
+      // Atualizar no banco
+      const { error } = await supabase
+        .from('calculation_details')
+        .update({
+          monthly_consumption: newConsumption,
+          base_value: newBaseValue,
+          corrected_value: correctedValue
+        })
+        .eq('id', detailId);
+
+      if (error) throw error;
+
+      // Atualizar estado local
+      setDetails(prev => prev.map(d => 
+        d.id === detailId 
+          ? { 
+              ...d, 
+              monthly_consumption: newConsumption,
+              base_value: newBaseValue,
+              corrected_value: correctedValue
+            }
+          : d
+      ));
+
+      setEditingId(null);
+    } catch (error) {
+      console.error('Erro ao atualizar consumo:', error);
+    }
+  };
+
+  const startEdit = (detail: CalculationDetail) => {
+    setEditingId(detail.id);
+    setEditValue(detail.monthly_consumption);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditValue(0);
+  };
+
+  const saveEdit = () => {
+    if (editingId && editValue > 0) {
+      updateConsumption(editingId, editValue);
+    }
   };
 
   const totalCorrectedValue = details.reduce((sum, detail) => sum + detail.corrected_value, 0);
@@ -133,41 +213,89 @@ export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
               ) : (
                 <div className="overflow-x-auto">
                   <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Mês/Ano</TableHead>
-                        <TableHead className="text-right">Valor Base</TableHead>
-                        <TableHead className="text-right">Taxa IPCA</TableHead>
-                        <TableHead className="text-right">Valor Corrigido</TableHead>
-                        <TableHead className="text-right">Diferença</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {details.map((detail) => {
-                        const difference = detail.corrected_value - detail.base_value;
-                        return (
-                          <TableRow key={detail.id}>
-                            <TableCell className="font-medium">
-                              {formatDate(detail.month_year)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatCurrency(detail.base_value)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatPercentage(detail.ipca_rate)}
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
-                              {formatCurrency(detail.corrected_value)}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <span className={difference > 0 ? "text-success" : "text-muted-foreground"}>
-                                +{formatCurrency(difference)}
-                              </span>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
+                     <TableHeader>
+                       <TableRow>
+                         <TableHead>Mês/Ano</TableHead>
+                         <TableHead className="text-right">Consumo (kWh)</TableHead>
+                         <TableHead className="text-right">Valor Base</TableHead>
+                         <TableHead className="text-right">Taxa IPCA</TableHead>
+                         <TableHead className="text-right">Valor Corrigido</TableHead>
+                         <TableHead className="text-right">Diferença</TableHead>
+                         <TableHead className="text-center">Ações</TableHead>
+                       </TableRow>
+                     </TableHeader>
+                     <TableBody>
+                       {details.map((detail) => {
+                         const difference = detail.corrected_value - detail.base_value;
+                         const isEditing = editingId === detail.id;
+                         
+                         return (
+                           <TableRow key={detail.id}>
+                             <TableCell className="font-medium">
+                               {formatDate(detail.month_year)}
+                             </TableCell>
+                             <TableCell className="text-right">
+                               {isEditing ? (
+                                 <Input
+                                   type="number"
+                                   value={editValue}
+                                   onChange={(e) => setEditValue(Number(e.target.value))}
+                                   className="w-20 text-right"
+                                   min="0"
+                                 />
+                               ) : (
+                                 `${detail.monthly_consumption || 0} kWh`
+                               )}
+                             </TableCell>
+                             <TableCell className="text-right">
+                               {formatCurrency(detail.base_value)}
+                             </TableCell>
+                             <TableCell className="text-right">
+                               {formatPercentage(detail.ipca_rate)}
+                             </TableCell>
+                             <TableCell className="text-right font-medium">
+                               {formatCurrency(detail.corrected_value)}
+                             </TableCell>
+                             <TableCell className="text-right">
+                               <span className={difference > 0 ? "text-success" : "text-muted-foreground"}>
+                                 +{formatCurrency(difference)}
+                               </span>
+                             </TableCell>
+                             <TableCell className="text-center">
+                               {isEditing ? (
+                                 <div className="flex gap-1 justify-center">
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={saveEdit}
+                                     className="h-6 w-6 p-0"
+                                   >
+                                     <Save className="h-3 w-3" />
+                                   </Button>
+                                   <Button
+                                     size="sm"
+                                     variant="ghost"
+                                     onClick={cancelEdit}
+                                     className="h-6 w-6 p-0"
+                                   >
+                                     <X className="h-3 w-3" />
+                                   </Button>
+                                 </div>
+                               ) : (
+                                 <Button
+                                   size="sm"
+                                   variant="ghost"
+                                   onClick={() => startEdit(detail)}
+                                   className="h-6 w-6 p-0"
+                                 >
+                                   <Edit2 className="h-3 w-3" />
+                                 </Button>
+                               )}
+                             </TableCell>
+                           </TableRow>
+                         );
+                       })}
+                     </TableBody>
                   </Table>
                 </div>
               )}

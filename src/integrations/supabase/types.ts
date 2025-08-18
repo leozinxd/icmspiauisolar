@@ -23,6 +23,7 @@ export type Database = {
           id: string
           ipca_rate: number
           month_year: string
+          monthly_consumption: number | null
         }
         Insert: {
           base_value: number
@@ -32,6 +33,7 @@ export type Database = {
           id?: string
           ipca_rate: number
           month_year: string
+          monthly_consumption?: number | null
         }
         Update: {
           base_value?: number
@@ -41,6 +43,7 @@ export type Database = {
           id?: string
           ipca_rate?: number
           month_year?: string
+          monthly_consumption?: number | null
         }
         Relationships: [
           {

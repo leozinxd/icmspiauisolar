@@ -144,7 +144,8 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           month_year: detail.monthYear.toISOString().split('T')[0],
           base_value: detail.baseValue,
           corrected_value: detail.correctedValue,
-          ipca_rate: detail.ipcaRate
+          ipca_rate: detail.ipcaRate,
+          monthly_consumption: detail.monthlyConsumption
         }));
         
         const { error: detailsError } = await supabase
