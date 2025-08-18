@@ -39,21 +39,6 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     return Math.max(0, monthsEligible);
   };
 
-  const updateStats = async (reimbursementValue: number) => {
-    // Manter localStorage por compatibilidade
-    const currentInvoices = localStorage.getItem('analyzedInvoices');
-    const currentDebt = localStorage.getItem('totalGovernmentDebt');
-    
-    const newInvoiceCount = (currentInvoices ? parseInt(currentInvoices) : 0) + 1;
-    const newTotalDebt = (currentDebt ? parseFloat(currentDebt) : 0) + reimbursementValue;
-    
-    localStorage.setItem('analyzedInvoices', newInvoiceCount.toString());
-    localStorage.setItem('totalGovernmentDebt', newTotalDebt.toString());
-    
-    // Dispatch custom event to update footer
-    window.dispatchEvent(new CustomEvent('statsUpdated'));
-  };
-
   const calculateReimbursement = async () => {
     if (!supplyType || !injected || !consumption) return;
     
@@ -163,7 +148,6 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
     }
     
     setResult(finalValue);
-    await updateStats(finalValue);
   };
 
   const formatDate = (date) => {
