@@ -66,7 +66,7 @@ export default function Auth() {
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl text-center">Bem-vindo</CardTitle>
             <CardDescription className="text-center">
-              Entre com sua conta ou registre-se
+              Entre com sua conta ou faça seu cadastro
             </CardDescription>
           </CardHeader>
           <CardContent>
