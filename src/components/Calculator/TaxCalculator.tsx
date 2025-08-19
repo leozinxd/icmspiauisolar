@@ -251,6 +251,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           >
             <DollarSign className="w-4 h-4 mr-2" />
             {loading ? "CALCULANDO..." : "VERIFICAR VALOR DISPONÍVEL"}
+            <DollarSign className="w-4 h-4 mr-2" />
           </Button>
           
           {result !== null && (
