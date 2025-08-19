@@ -27,7 +27,7 @@ export function EligibilityCheck({ onProceedToCalculator }: EligibilityCheckProp
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pb-32">
+    <div className="bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pb-32">
       <Card className="w-full max-w-md shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
           <div className="mx-auto w-16 h-16 bg-gradient-to-r from-primary to-primary-hover rounded-full flex items-center justify-center">
