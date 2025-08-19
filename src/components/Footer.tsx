@@ -31,7 +31,7 @@ export function Footer() {
 
   return (
     <header className="bg-background/95 backdrop-blur-sm border-b border-border z-50">
-      <div className="container mx-auto px-4 py-4" style="padding-top: 100px">
+      <div className="container mx-auto px-4 py-4">
         <div className="grid grid-cols-2 gap-4 max-w-lg mx-auto">
           <Card className="text-center">
             <div className="p-4">
