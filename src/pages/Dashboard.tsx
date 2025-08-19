@@ -187,7 +187,7 @@ export default function Dashboard() {
                 <User className="w-4 h-4 text-muted-foreground" />
                 <span className="text-sm text-muted-foreground">{user?.email}</span>
               </div>
-              <Button variant="outline" onClick={() => navigate('/')}>
+              <Button variant="default" onClick={() => navigate('/')}>
                 <Calculator className="w-4 h-4 mr-2" />
                 Nova Análise
               </Button>
