@@ -259,7 +259,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
               <div className="mt-6 p-6 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
                 <div className="text-center space-y-2">
                   <p className="text-sm font-medium text-success">
-                    Indenização Disponível
+                    VALOR DISPONÍVEL
                   </p>
                   <p className="text-3xl font-bold text-success">
                     {new Intl.NumberFormat("pt-BR", {
