@@ -158,7 +158,7 @@ export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
       <DialogTrigger asChild>
         <Button variant="outline" className="w-full">
           <FileText className="w-4 h-4 mr-2" />
-          DETALHAMENTO MENSAL
+          OPÇÕES AVANÇADAS
         </Button>
       </DialogTrigger>
       <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
@@ -218,8 +218,8 @@ export function CalculationDetails({ calculationId }: CalculationDetailsProps) {
                          <TableHead className="text-right">Valor Base</TableHead>
                          <TableHead className="text-right">Taxa IPCA</TableHead>
                          <TableHead className="text-right">Valor Corrigido</TableHead>
-                         <TableHead className="text-right">Diferença</TableHead>
-                         <TableHead className="text-center">Ações</TableHead>
+                         <TableHead className="text-right">Correção</TableHead>
+                         <TableHead className="text-center">Alterar Consumo Compensado</TableHead>
                        </TableRow>
                      </TableHeader>
                      <TableBody>
