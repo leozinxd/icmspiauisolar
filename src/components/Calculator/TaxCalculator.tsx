@@ -249,9 +249,9 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
             disabled={!supplyType || !injected || !consumption || loading}
             className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-primary-foreground"
           >
-            
+            <DollarSign className="w-4 h-4 mr-2" />
             {loading ? "CALCULANDO..." : "VERIFICAR VALOR DISPONÍVEL"}
-            
+            <DollarSign className="w-4 h-4 mr-2" />
           </Button>
           
           {result !== null && (
