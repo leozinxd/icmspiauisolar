@@ -196,7 +196,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="space-y-4">
+          
             <div>
               <Label htmlFor="clientName">Nome do Cliente</Label>
               <Input
