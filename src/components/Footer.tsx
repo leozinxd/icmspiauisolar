@@ -9,25 +9,30 @@ export function Footer() {
   const [loading, setLoading] = useState(false);
   
   const loadStats = async () => {
-    setLoading(true);
-    try {
-      const { data, count, error } = await supabase
-        .from('calculations')
-        .select('total_amount.sum()', { count: 'exact' });
+  setLoading(true);
+  try {
+    const { data, count, error } = await supabase
+      .from('calculations')
+      .select('total_amount', { count: 'exact' });
 
-      if (error) throw error;
-      setAnalyzedInvoices(count || 0);
-      setTotalDebt(data?.[0]?.sum ? parseFloat(String(data[0].sum)) : 0);
-    } catch (error) {
-      console.error('Erro ao buscar informações:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    if (error) throw error;
 
-  useEffect(() => {
-    loadStats();
-  }, []);
+    // quantidade de registros
+    setAnalyzedInvoices(count || 0);
+
+    // soma dos valores
+    const total = data?.reduce((acc, item) => acc + (item.total_amount || 0), 0) || 0;
+    setTotalDebt(total);
+  } catch (error) {
+    console.error('Erro ao buscar informações:', error);
+  } finally {
+    setLoading(false);
+  }
+};
+
+useEffect(() => {
+  loadStats();
+}, []);
 
   return (
     <header className="bg-background/95 backdrop-blur-sm border-b border-border z-50">
