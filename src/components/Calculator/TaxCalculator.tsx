@@ -1,9 +1,19 @@
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CalendarIcon, DollarSign, Calculator, FileText, AlertCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ipcaData } from "@/lib/ipca";
+import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Calculator, ArrowLeft, DollarSign, FileText } from "lucide-react";
 import { calculateMonetaryCorrection, getIPCARate } from "@/lib/ipca";
 import { CalculationDetails } from "./CalculationDetails";
@@ -15,7 +25,9 @@ interface TaxCalculatorProps {
 }
 
 export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalculatorProps) {
-  const [supplyType, setSupplyType] = useState<"monofasico" | "trifasico" | "">("");
+  const { user } = useAuth();
+  const [supplyType, setSupplyType] = useState<string>("");
+  const [clientName, setClientName] = useState<string>("");
   const [injected, setInjected] = useState("");
   const [consumption, setConsumption] = useState("");
   const [result, setResult] = useState<number | null>(null);
@@ -113,6 +125,7 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
         .from('calculations')
         .insert({
           supply_type: supplyType,
+          client_name: clientName || null,
           injected_energy: injectedNum,
           consumption: consumptionNum,
           installation_date: installationDate,
@@ -185,6 +198,17 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
         </CardHeader>
         
         <CardContent className="space-y-6">
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="clientName">Nome do Cliente</Label>
+              <Input
+                id="clientName"
+                type="text"
+                placeholder="Digite o nome do cliente"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
+              />
+            </div>
           <div className="space-y-2">
             <Label htmlFor="supply-type" className="text-sm font-medium">
               Tipo de Fornecimento
@@ -256,7 +280,16 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           
           {result !== null && (
             <>
-               <div data-lov-id="src/components/Calculator/EligibilityCheck.tsx:67:12" data-lov-name="div" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="67" data-component-file="EligibilityCheck.tsx" data-component-name="div" data-component-content="%7B%7D" class="mt-6 p-4 rounded-lg border-l-4 bg-yellow-50 border-l-yellow-400 text-yellow-800"><div data-lov-id="src/components/Calculator/EligibilityCheck.tsx:72:14" data-lov-name="div" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="72" data-component-file="EligibilityCheck.tsx" data-component-name="div" data-component-content="%7B%22className%22%3A%22flex%20items-center%20space-x-2%22%7D" class="flex items-center space-x-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert w-5 h-5 text-yellow-600" data-lov-id="src/components/Calculator/EligibilityCheck.tsx:76:18" data-lov-name="AlertCircle" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="76" data-component-file="EligibilityCheck.tsx" data-component-name="AlertCircle" data-component-content="%7B%22className%22%3A%22w-5%20h-5%20text-yellow-600%22%7D"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg><p data-lov-id="src/components/Calculator/EligibilityCheck.tsx:78:16" data-lov-name="p" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="78" data-component-file="EligibilityCheck.tsx" data-component-name="p" data-component-content="%7B%22className%22%3A%22font-medium%22%7D" class="font-medium">FAÇA O LOGIN E ACESSE AS OPÇÕES AVANÇADAS</p></div></div>
+               {!user && (
+                 <div className="mt-6 p-4 rounded-lg border-l-4 bg-yellow-50 border-l-yellow-400 text-yellow-800">
+                   <div className="flex items-center space-x-2">
+                     <AlertCircle className="w-5 h-5 text-yellow-600" />
+                     <Link to="/auth" className="font-medium hover:underline cursor-pointer">
+                       FAÇA O LOGIN E ACESSE AS OPÇÕES AVANÇADAS
+                     </Link>
+                   </div>
+                 </div>
+               )}
               <div className="mt-6 p-6 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
                 <div className="text-center space-y-2">
                   <p className="text-sm font-medium text-success">
