@@ -6,7 +6,6 @@ interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  isAdmin: boolean;
   signUp: (email: string, password: string, fullName?: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
@@ -18,28 +17,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
-  const [isAdmin, setIsAdmin] = useState(false);
-
-  const checkUserRole = async (userId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId)
-        .eq('role', 'admin')
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking user role:', error);
-        return false;
-      }
-
-      return !!data;
-    } catch (error) {
-      console.error('Error checking user role:', error);
-      return false;
-    }
-  };
 
   useEffect(() => {
     // Set up auth state listener
@@ -47,16 +24,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        
-        if (session?.user) {
-          // Check if user is admin
-          setTimeout(() => {
-            checkUserRole(session.user.id).then(setIsAdmin);
-          }, 0);
-        } else {
-          setIsAdmin(false);
-        }
-        
         setLoading(false);
       }
     );
@@ -65,11 +32,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      
-      if (session?.user) {
-        checkUserRole(session.user.id).then(setIsAdmin);
-      }
-      
       setLoading(false);
     });
 
@@ -109,7 +71,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       session,
       loading,
-      isAdmin,
       signUp,
       signIn,
       signOut
