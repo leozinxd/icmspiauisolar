@@ -16,17 +16,20 @@ import {
   TrendingUp,
   Calendar,
   DollarSign,
-  Filter
+  Filter,
+  Trash2
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { CalculationDetails } from '@/components/Calculator/CalculationDetails';
 import { jsPDF } from 'jspdf';
 import { autoTable } from 'jspdf-autotable';
+import { toast } from 'sonner';
 
 interface Calculation {
   id: string;
   supply_type: string;
+  client_name: string | null;
   injected_energy: number;
   consumption: number;
   installation_date: string;
@@ -41,7 +44,7 @@ interface Calculation {
 }
 
 export default function Dashboard() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [calculations, setCalculations] = useState<Calculation[]>([]);
   const [userCalculations, setUserCalculations] = useState<Calculation[]>([]);
@@ -60,19 +63,22 @@ export default function Dashboard() {
   const fetchCalculations = async () => {
     setLoading(true);
     try {
-      // Buscar todos os cálculos com informações do usuário
-      const { data: allData, error: allError } = await supabase
-        .from('calculations')
-        .select(`
-          *,
-          profiles (
-            display_name,
-            email
-          )
-        `)
-        .order('created_at', { ascending: false });
+      // Buscar todos os cálculos com informações do usuário (apenas para admins)
+      if (isAdmin) {
+        const { data: allData, error: allError } = await supabase
+          .from('calculations')
+          .select(`
+            *,
+            profiles (
+              display_name,
+              email
+            )
+          `)
+          .order('created_at', { ascending: false });
 
-      if (allError) throw allError;
+        if (allError) throw allError;
+        setCalculations((allData as any) || []);
+      }
 
       // Buscar apenas cálculos do usuário atual
       const { data: userData, error: userError } = await supabase
@@ -82,13 +88,42 @@ export default function Dashboard() {
         .order('created_at', { ascending: false });
 
       if (userError) throw userError;
-
-      setCalculations((allData as any) || []);
       setUserCalculations(userData || []);
     } catch (error) {
       console.error('Erro ao buscar cálculos:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const deleteCalculation = async (calculationId: string) => {
+    if (!isAdmin) {
+      toast.error('Apenas administradores podem excluir cálculos');
+      return;
+    }
+
+    try {
+      // Primeiro, deletar os detalhes do cálculo
+      const { error: detailsError } = await supabase
+        .from('calculation_details')
+        .delete()
+        .eq('calculation_id', calculationId);
+
+      if (detailsError) throw detailsError;
+
+      // Depois, deletar o cálculo
+      const { error: calcError } = await supabase
+        .from('calculations')
+        .delete()
+        .eq('id', calculationId);
+
+      if (calcError) throw calcError;
+
+      toast.success('Cálculo excluído com sucesso');
+      fetchCalculations();
+    } catch (error) {
+      console.error('Erro ao excluir cálculo:', error);
+      toast.error('Erro ao excluir cálculo');
     }
   };
 
@@ -127,13 +162,24 @@ export default function Dashboard() {
       
       // Informações gerais
       doc.setFontSize(12);
-      doc.text(`Tipo de Fornecimento: ${calculation.supply_type}`, 20, 40);
-      doc.text(`Energia Injetada: ${calculation.injected_energy} kWh`, 20, 50);
-      doc.text(`Consumo: ${calculation.consumption} kWh`, 20, 60);
-      doc.text(`Data de Instalação: ${formatDate(calculation.installation_date)}`, 20, 70);
-      doc.text(`Total de Meses: ${calculation.months_count}`, 20, 80);
-      doc.text(`Valor Total: ${formatCurrency(calculation.total_amount)}`, 20, 90);
-      doc.text(`Indenização Final: ${formatCurrency(calculation.total_amount * 2)}`, 20, 100);
+      if (calculation.client_name) {
+        doc.text(`Cliente: ${calculation.client_name}`, 20, 40);
+        doc.text(`Tipo de Fornecimento: ${calculation.supply_type}`, 20, 50);
+        doc.text(`Energia Injetada: ${calculation.injected_energy} kWh`, 20, 60);
+        doc.text(`Consumo: ${calculation.consumption} kWh`, 20, 70);
+        doc.text(`Data de Instalação: ${formatDate(calculation.installation_date)}`, 20, 80);
+        doc.text(`Total de Meses: ${calculation.months_count}`, 20, 90);
+        doc.text(`Valor Total: ${formatCurrency(calculation.total_amount)}`, 20, 100);
+        doc.text(`Indenização Final: ${formatCurrency(calculation.total_amount * 2)}`, 20, 110);
+      } else {
+        doc.text(`Tipo de Fornecimento: ${calculation.supply_type}`, 20, 40);
+        doc.text(`Energia Injetada: ${calculation.injected_energy} kWh`, 20, 50);
+        doc.text(`Consumo: ${calculation.consumption} kWh`, 20, 60);
+        doc.text(`Data de Instalação: ${formatDate(calculation.installation_date)}`, 20, 70);
+        doc.text(`Total de Meses: ${calculation.months_count}`, 20, 80);
+        doc.text(`Valor Total: ${formatCurrency(calculation.total_amount)}`, 20, 90);
+        doc.text(`Indenização Final: ${formatCurrency(calculation.total_amount * 2)}`, 20, 100);
+      }
 
       // Tabela de detalhes
       const tableData = details?.map(detail => [
@@ -147,7 +193,7 @@ export default function Dashboard() {
 
       // @ts-ignore - jsPDF autoTable plugin
       autoTable(doc, {
-        startY: 120,
+        startY: calculation.client_name ? 130 : 120,
         head: [['Mês/Ano', 'Consumo (kWh)', 'Valor Base', 'Taxa IPCA', 'Valor Corrigido', 'Diferença']],
         body: tableData,
         styles: { fontSize: 8 },
@@ -268,7 +314,7 @@ export default function Dashboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="mine">Minhas Análises</SelectItem>
-                    <SelectItem value="all">Todas as Análises</SelectItem>
+                    {isAdmin && <SelectItem value="all">Todas as Análises</SelectItem>}
                   </SelectContent>
                 </Select>
               </div>
@@ -280,13 +326,14 @@ export default function Dashboard() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Data</TableHead>
+                    <TableHead>Cliente</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Energia Injetada</TableHead>
                     <TableHead>Consumo</TableHead>
                     <TableHead>Meses</TableHead>
                     <TableHead>Valor Corrigido</TableHead>
                     <TableHead>Indenização</TableHead>
-                    {filter === 'all' && <TableHead>Usuário</TableHead>}
+                    {filter === 'all' && isAdmin && <TableHead>Usuário</TableHead>}
                     <TableHead className="text-center">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -300,6 +347,9 @@ export default function Dashboard() {
                         </div>
                       </TableCell>
                       <TableCell>
+                        {calculation.client_name || '-'}
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline">{calculation.supply_type}</Badge>
                       </TableCell>
                       <TableCell>{calculation.injected_energy} kWh</TableCell>
@@ -311,7 +361,7 @@ export default function Dashboard() {
                       <TableCell className="font-medium text-destructive">
                         {formatCurrency(calculation.total_amount * 2)}
                       </TableCell>
-                      {filter === 'all' && (
+                      {filter === 'all' && isAdmin && (
                         <TableCell>
                           <div className="text-sm">
                             <div>{calculation.profiles?.display_name || 'Usuário'}</div>
@@ -332,13 +382,23 @@ export default function Dashboard() {
                           >
                             <Download className="w-3 h-3" />
                           </Button>
+                          {isAdmin && (
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => deleteCalculation(calculation.id)}
+                              className="h-8"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </Button>
+                          )}
                         </div>
                       </TableCell>
                     </TableRow>
                   ))}
                   {currentData.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={filter === 'all' ? 9 : 8} className="text-center py-8">
+                      <TableCell colSpan={filter === 'all' && isAdmin ? 10 : 9} className="text-center py-8">
                         <div className="text-muted-foreground">
                           <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                           <p>Nenhuma análise encontrada</p>
