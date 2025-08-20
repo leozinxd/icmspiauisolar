@@ -15,6 +15,10 @@ import { toast } from "sonner";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
+interface TaxCalculatorProps {
+  onBackToEligibility: () => void;
+  installationDate: string;
+}
 export function TaxCalculator() {
   const { user } = useAuth();
   const [supplyType, setSupplyType] = useState<string>("");
@@ -24,74 +28,92 @@ export function TaxCalculator() {
   const [installationDate, setInstallationDate] = useState<Date | undefined>(undefined);
   const [result, setResult] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
+  const [calculationId, setCalculationId] = useState<string | null>(null);
+  
+ const calculateMonthsDifference = (installationDate: string): number => {
+    const installation = new Date(installationDate);
+    const currentDate = new Date();
+    const june2024 = new Date("2024-06-02");
+    
+    // Data de início elegível: maior entre instalação e junho de 2024
+    const startDate = installation > june2024 ? installation : june2024;
+    
+    // Calcular meses elegíveis (apenas a partir de junho de 2024)
+    const monthsEligible = 
+      (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
+      (currentDate.getMonth() - startDate.getMonth());
+    
+    // Retornar apenas se for positivo (não pode ter meses antes de junho 2024)
+    return Math.max(0, monthsEligible);
+  };
 
-  const calculateTax = async () => {
-    if (!supplyType || !injectedEnergy || !consumption || !installationDate) {
-      toast.error("Por favor, preencha todos os campos");
-      return;
+  const calculateReimbursement = async () => {
+    if (!supplyType || !injected || !consumption) return;
+    
+    const injectedNum = parseInt(injected);
+    const consumptionNum = parseInt(consumption); // Valor médio mensal informado
+    
+    const installationDateObj = new Date(installationDate);
+    const currentDate = new Date();
+    const monthsDifference = calculateMonthsDifference(installationDate);
+    
+    let totalCorrectedValue = 0;
+    const details: any[] = [];
+    
+    // Data de início elegível: a partir de junho de 2024
+    const june2024 = new Date("2024-06-02");
+    const startDate = installationDateObj > june2024 ? installationDateObj : june2024;
+    
+    // Calcular para cada mês elegível
+    for (let i = 0; i < monthsDifference; i++) {
+      const monthDate = new Date(startDate);
+      monthDate.setMonth(monthDate.getMonth() + i);
+      
+      // Aplicar variação de ±20% no consumo para simular realidade
+      const variation = 0.8 + (Math.random() * 0.4); // Entre 0.8 e 1.2 (±20%)
+      const consumptionVar = Math.round(consumptionNum * variation);
+      const injectedVar = Math.round(injectedNum * variation);
+      
+      // CC = Consumo Compensado (usar o consumo variado)
+      const CC = Math.min(consumptionVar, injectedVar);
+      const monthlyConsumption = CC;
+      
+      // BTB = Benefício Tarifário Bruto
+      const BTB = CC * 0.73;
+      
+      // IBTB = ICMS BTB
+      const IBTB = BTB * 0.2215;
+      
+      // FB = Fio B
+      const FB = CC * 0.27;
+      
+      // IFB = ICMS Fio B
+      const IFB = FB * 0.2215;
+      
+      // Valor base para este mês
+      const monthlyValue = IFB + IBTB;
+      
+      // Aplicar correção monetária desde este mês até hoje
+      const correctedMonthlyValue = calculateMonetaryCorrection(monthlyValue, monthDate, currentDate);
+      
+      // Taxa IPCA acumulada para este período
+      const ipcaRate = getIPCARate(monthDate.getFullYear(), monthDate.getMonth() + 1);
+      
+      details.push({
+        monthYear: monthDate,
+        baseValue: monthlyValue,
+        correctedValue: correctedMonthlyValue,
+        ipcaRate: correctedMonthlyValue / monthlyValue - 1, // Taxa efetiva aplicada
+        monthlyConsumption: monthlyConsumption // Armazenar o consumo compensado específico do mês
+      });
+      
+      totalCorrectedValue += correctedMonthlyValue;
     }
 
     setLoading(true);
 
-    try {
-      const currentDate = new Date();
-      const installDate = new Date(installationDate);
-      
-      // Data de referência: 02 de junho de 2024
-      const referenceDate = new Date("2024-06-02");
-      
-      // Verificar se a instalação é elegível (antes de junho de 2024)
-      if (installDate >= referenceDate) {
-        toast.error("Instalações após junho de 2024 não são elegíveis");
-        setLoading(false);
-        return;
-      }
-
-      // Calcular meses elegíveis (de junho 2024 até hoje)
-      const monthsCount = Math.max(0, 
-        (currentDate.getFullYear() - referenceDate.getFullYear()) * 12 + 
-        (currentDate.getMonth() - referenceDate.getMonth())
-      );
-
-      if (monthsCount <= 0) {
-        toast.error("Nenhum mês elegível encontrado");
-        setLoading(false);
-        return;
-      }
-
-      let totalAmount = 0;
-      const allCalculations: any[] = [];
-
-      // Calcular para cada mês desde junho de 2024
-      for (let i = 0; i < monthsCount; i++) {
-        const monthDate = new Date(referenceDate);
-        monthDate.setMonth(monthDate.getMonth() + i);
-        
-        // Energia compensada (menor valor entre injetada e consumida)
-        const compensatedEnergy = Math.min(parseInt(injectedEnergy), parseInt(consumption));
-        
-        // Cálculo do valor mensal
-        const monthlyValue = compensatedEnergy * 0.73 * 0.2215 + compensatedEnergy * 0.27 * 0.2215;
-        
-        // Aplicar correção IPCA
-        const ipcaDataItem = ipcaData.find(item => 
-          item.year === monthDate.getFullYear() && 
-          item.month === monthDate.getMonth() + 1
-        );
-        
-        const ipcaRate = ipcaDataItem ? ipcaDataItem.rate / 100 : 0;
-        const correctedValue = monthlyValue * (1 + ipcaRate);
-        
-        allCalculations.push({
-          month: monthDate.getMonth() + 1,
-          year: monthDate.getFullYear(),
-          baseValue: monthlyValue,
-          correctedValue: correctedValue,
-          ipcaRate: ipcaRate
-        });
-        
-        totalAmount += correctedValue;
-      }
+     // Como se trata de indenização, o valor é dobrado
+    const finalValue = totalCorrectedValue * 2;
 
       // Salvar no banco de dados
       const { data, error } = await supabase.from("calculations").insert({
@@ -111,7 +133,51 @@ export function TaxCalculator() {
       } else {
         toast.success("Cálculo realizado com sucesso!");
       }
+const { data: calculationData, error: calculationError } = await supabase
+        .from('calculations')
+        .insert({
+          supply_type: supplyType,
+          injected_energy: injectedNum,
+          consumption: consumptionNum,
+          installation_date: installationDate,
+          total_amount: finalValue,
+          months_count: monthsDifference,
+          user_id: user?.id || null
+        })
+        .select()
+        .single();
 
+      if (calculationError) {
+        console.error('Erro ao salvar cálculo:', calculationError);
+      } else if (calculationData) {
+        setCalculationId(calculationData.id);
+
+
+
+
+
+
+
+
+
+
+        // Salvar detalhes mensais
+        const detailsToInsert = details.map(detail => ({
+          calculation_id: calculationData.id,
+          month_year: detail.monthYear.toISOString().split('T')[0],
+          base_value: detail.baseValue,
+          corrected_value: detail.correctedValue,
+          ipca_rate: detail.ipcaRate,
+          monthly_consumption: detail.monthlyConsumption
+        }));
+
+        const { error: detailsError } = await supabase
+          .from('calculation_details')
+          .insert(detailsToInsert);
+          
+        if (detailsError) {
+          console.error('Erro ao salvar detalhes:', detailsError);
+        }
       setResult(totalAmount);
     } catch (error) {
       console.error("Erro no cálculo:", error);
@@ -184,38 +250,16 @@ export function TaxCalculator() {
               </div>
             </div>
 
-            <div>
-              <Label>Data de Instalação</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !installationDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {installationDate ? format(installationDate, "dd/MM/yyyy") : "Selecione a data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={installationDate}
-                    onSelect={setInstallationDate}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-          </div>
+           <p className="text-sm font-medium text-muted-foreground">
+                Data de instalação: {formatDate(installationDate)}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Faturas corrigidas: {calculateMonthsDifference(installationDate)}
+              </p>
 
-          <Button
-            onClick={calculateTax}
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-primary-foreground"
-          >
+          <Button 
+            onClick={calculateReimbursement}
+            disabled={!supplyType || !injected || !consumption || loading}
             <DollarSign className="w-4 h-4 mr-2" />
             {loading ? "CALCULANDO..." : "VERIFICAR VALOR DISPONÍVEL"}
             <DollarSign className="w-4 h-4 mr-2" />
@@ -249,28 +293,11 @@ export function TaxCalculator() {
                   </p>
                 </div>
               </div>
+      <CalculationDetails calculationId={calculationId} />
             </>
           )}
           
-          <div className="flex flex-col sm:flex-row gap-4 mt-6">
-            <Button
-              onClick={() => window.location.reload()}
-              variant="outline"
-              className="flex-1"
-            >
-              <Calculator className="w-4 h-4 mr-2" />
-              NOVO CÁLCULO
-            </Button>
-            {user && (
-              <Button
-                variant="default"
-                className="flex-1"
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                OPÇÕES AVANÇADAS
-              </Button>
-            )}
-          </div>
+          
         </CardContent>
       </Card>
     </div>
