@@ -1,252 +1,219 @@
 import { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calculator, ArrowLeft, DollarSign, FileText } from "lucide-react";
-import { calculateMonetaryCorrection, getIPCARate } from "@/lib/ipca";
-import { CalculationDetails } from "./CalculationDetails";
+import { CalendarIcon, DollarSign, Calculator, FileText, AlertCircle } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { ipcaData } from "@/lib/ipca";
+import { toast } from "sonner";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
-interface TaxCalculatorProps {
-  onBackToEligibility: () => void;
-  installationDate: string;
-}
-
-export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalculatorProps) {
-  const [supplyType, setSupplyType] = useState<"monofasico" | "trifasico" | "">("");
-  const [injected, setInjected] = useState("");
-  const [consumption, setConsumption] = useState("");
+export function TaxCalculator() {
+  const { user } = useAuth();
+  const [supplyType, setSupplyType] = useState<string>("");
+  const [clientName, setClientName] = useState<string>("");
+  const [injectedEnergy, setInjectedEnergy] = useState<string>("");
+  const [consumption, setConsumption] = useState<string>("");
+  const [installationDate, setInstallationDate] = useState<Date | undefined>(undefined);
   const [result, setResult] = useState<number | null>(null);
-  const [calculationId, setCalculationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const calculateMonthsDifference = (installationDate: string): number => {
-    const installation = new Date(installationDate);
-    const currentDate = new Date();
-    const june2024 = new Date("2024-06-02");
-    
-    // Data de início elegível: maior entre instalação e junho de 2024
-    const startDate = installation > june2024 ? installation : june2024;
-    
-    // Calcular meses elegíveis (apenas a partir de junho de 2024)
-    const monthsEligible = 
-      (currentDate.getFullYear() - startDate.getFullYear()) * 12 + 
-      (currentDate.getMonth() - startDate.getMonth());
-    
-    // Retornar apenas se for positivo (não pode ter meses antes de junho 2024)
-    return Math.max(0, monthsEligible);
-  };
-
-  const calculateReimbursement = async () => {
-    if (!supplyType || !injected || !consumption) return;
-    
-    const injectedNum = parseInt(injected);
-    const consumptionNum = parseInt(consumption); // Valor médio mensal informado
-    
-    const installationDateObj = new Date(installationDate);
-    const currentDate = new Date();
-    const monthsDifference = calculateMonthsDifference(installationDate);
-    
-    let totalCorrectedValue = 0;
-    const details: any[] = [];
-    
-    // Data de início elegível: a partir de junho de 2024
-    const june2024 = new Date("2024-06-02");
-    const startDate = installationDateObj > june2024 ? installationDateObj : june2024;
-    
-    // Calcular para cada mês elegível
-    for (let i = 0; i < monthsDifference; i++) {
-      const monthDate = new Date(startDate);
-      monthDate.setMonth(monthDate.getMonth() + i);
-      
-      // Aplicar variação de ±20% no consumo para simular realidade
-      const variation = 0.8 + (Math.random() * 0.4); // Entre 0.8 e 1.2 (±20%)
-      const consumptionVar = Math.round(consumptionNum * variation);
-      const injectedVar = Math.round(injectedNum * variation);
-      
-      // CC = Consumo Compensado (usar o consumo variado)
-      const CC = Math.min(consumptionVar, injectedVar);
-      const monthlyConsumption = CC;
-      
-      // BTB = Benefício Tarifário Bruto
-      const BTB = CC * 0.73;
-      
-      // IBTB = ICMS BTB
-      const IBTB = BTB * 0.2215;
-      
-      // FB = Fio B
-      const FB = CC * 0.27;
-      
-      // IFB = ICMS Fio B
-      const IFB = FB * 0.2215;
-      
-      // Valor base para este mês
-      const monthlyValue = IFB + IBTB;
-      
-      // Aplicar correção monetária desde este mês até hoje
-      const correctedMonthlyValue = calculateMonetaryCorrection(monthlyValue, monthDate, currentDate);
-      
-      // Taxa IPCA acumulada para este período
-      const ipcaRate = getIPCARate(monthDate.getFullYear(), monthDate.getMonth() + 1);
-      
-      details.push({
-        monthYear: monthDate,
-        baseValue: monthlyValue,
-        correctedValue: correctedMonthlyValue,
-        ipcaRate: correctedMonthlyValue / monthlyValue - 1, // Taxa efetiva aplicada
-        monthlyConsumption: monthlyConsumption // Armazenar o consumo compensado específico do mês
-      });
-      
-      totalCorrectedValue += correctedMonthlyValue;
+  const calculateTax = async () => {
+    if (!supplyType || !injectedEnergy || !consumption || !installationDate) {
+      toast.error("Por favor, preencha todos os campos");
+      return;
     }
-    
-    // Como se trata de indenização, o valor é dobrado
-    const finalValue = totalCorrectedValue * 2;
-    
+
+    setLoading(true);
+
     try {
-      // Salvar no Supabase
-      const { data: { user } } = await supabase.auth.getUser();
+      const currentDate = new Date();
+      const installDate = new Date(installationDate);
       
-      const { data: calculationData, error: calculationError } = await supabase
-        .from('calculations')
-        .insert({
-          supply_type: supplyType,
-          injected_energy: injectedNum,
-          consumption: consumptionNum,
-          installation_date: installationDate,
-          total_amount: finalValue,
-          months_count: monthsDifference,
-          user_id: user?.id || null
-        })
-        .select()
-        .single();
-
-      if (calculationError) {
-        console.error('Erro ao salvar cálculo:', calculationError);
-      } else if (calculationData) {
-        setCalculationId(calculationData.id);
-        
-        // Salvar detalhes mensais
-        const detailsToInsert = details.map(detail => ({
-          calculation_id: calculationData.id,
-          month_year: detail.monthYear.toISOString().split('T')[0],
-          base_value: detail.baseValue,
-          corrected_value: detail.correctedValue,
-          ipca_rate: detail.ipcaRate,
-          monthly_consumption: detail.monthlyConsumption
-        }));
-        
-        const { error: detailsError } = await supabase
-          .from('calculation_details')
-          .insert(detailsToInsert);
-          
-        if (detailsError) {
-          console.error('Erro ao salvar detalhes:', detailsError);
-        }
+      // Data de referência: 02 de junho de 2024
+      const referenceDate = new Date("2024-06-02");
+      
+      // Verificar se a instalação é elegível (antes de junho de 2024)
+      if (installDate >= referenceDate) {
+        toast.error("Instalações após junho de 2024 não são elegíveis");
+        setLoading(false);
+        return;
       }
-    } catch (error) {
-      console.error('Erro ao conectar com o banco:', error);
-    }
-    
-    setResult(finalValue);
-  };
 
-  const formatDate = (date) => {
-    const dateObj = new Date(date);
-    dateObj.setDate(dateObj.getDate() + 1)
-    return dateObj.toLocaleDateString("pt-BR")
-  }
+      // Calcular meses elegíveis (de junho 2024 até hoje)
+      const monthsCount = Math.max(0, 
+        (currentDate.getFullYear() - referenceDate.getFullYear()) * 12 + 
+        (currentDate.getMonth() - referenceDate.getMonth())
+      );
+
+      if (monthsCount <= 0) {
+        toast.error("Nenhum mês elegível encontrado");
+        setLoading(false);
+        return;
+      }
+
+      let totalAmount = 0;
+      const allCalculations: any[] = [];
+
+      // Calcular para cada mês desde junho de 2024
+      for (let i = 0; i < monthsCount; i++) {
+        const monthDate = new Date(referenceDate);
+        monthDate.setMonth(monthDate.getMonth() + i);
+        
+        // Energia compensada (menor valor entre injetada e consumida)
+        const compensatedEnergy = Math.min(parseInt(injectedEnergy), parseInt(consumption));
+        
+        // Cálculo do valor mensal
+        const monthlyValue = compensatedEnergy * 0.73 * 0.2215 + compensatedEnergy * 0.27 * 0.2215;
+        
+        // Aplicar correção IPCA
+        const ipcaDataItem = ipcaData.find(item => 
+          item.year === monthDate.getFullYear() && 
+          item.month === monthDate.getMonth() + 1
+        );
+        
+        const ipcaRate = ipcaDataItem ? ipcaDataItem.rate / 100 : 0;
+        const correctedValue = monthlyValue * (1 + ipcaRate);
+        
+        allCalculations.push({
+          month: monthDate.getMonth() + 1,
+          year: monthDate.getFullYear(),
+          baseValue: monthlyValue,
+          correctedValue: correctedValue,
+          ipcaRate: ipcaRate
+        });
+        
+        totalAmount += correctedValue;
+      }
+
+      // Salvar no banco de dados
+      const { data, error } = await supabase.from("calculations").insert({
+        supply_type: supplyType,
+        client_name: clientName || null,
+        injected_energy: parseInt(injectedEnergy),
+        consumption: parseInt(consumption),
+        installation_date: installationDate?.toISOString().split('T')[0],
+        total_amount: totalAmount,
+        months_count: allCalculations.length,
+        user_id: user?.id || null
+      });
+
+      if (error) {
+        console.error("Erro ao salvar:", error);
+        toast.error("Erro ao salvar o cálculo");
+      } else {
+        toast.success("Cálculo realizado com sucesso!");
+      }
+
+      setResult(totalAmount);
+    } catch (error) {
+      console.error("Erro no cálculo:", error);
+      toast.error("Erro ao realizar o cálculo");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 to-secondary/20 flex items-center justify-center p-4 pt-32">
-      <Card className="w-full max-w-lg shadow-xl border-0 bg-white/80 backdrop-blur-sm">
+    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-background to-secondary/5 flex items-center justify-center p-4">
+      <Card className="w-full max-w-2xl shadow-xl border-0 bg-white/80 backdrop-blur-sm">
         <CardHeader className="text-center space-y-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBackToEligibility}
-            className="self-start"
-          >
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-          
           <div className="mx-auto w-16 h-16 bg-gradient-to-r from-primary to-primary-hover rounded-full flex items-center justify-center">
             <Calculator className="w-8 h-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-2xl font-bold text-primary">
-            Calculadora de Ressarcimento
+            Calculadora de Ressarcimento ICMS
           </CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Calcule o valor disponível para ressarcimento de ICMS
-          </CardDescription>
         </CardHeader>
         
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="supply-type" className="text-sm font-medium">
-              Tipo de Fornecimento
-            </Label>
-            <Select value={supplyType} onValueChange={(value) => setSupplyType(value as "monofasico" | "trifasico")}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione o tipo" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="monofasico">Monofásico</SelectItem>
-                <SelectItem value="trifasico">Trifásico</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="injected" className="text-sm font-medium">
-                Energia Injetada (kWh)
-              </Label>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="clientName">Nome do Cliente</Label>
               <Input
-                id="injected"
-                type="number"
-                value={injected}
-                onChange={(e) => setInjected(e.target.value)}
-                placeholder="0"
-                min="0"
+                id="clientName"
+                type="text"
+                placeholder="Digite o nome do cliente"
+                value={clientName}
+                onChange={(e) => setClientName(e.target.value)}
               />
             </div>
             
-            <div className="space-y-2">
-              <Label htmlFor="consumption" className="text-sm font-medium">
-                Consumo Médio Mensal (kWh)
-              </Label>
-              <Input
-                id="consumption"
-                type="number"
-                value={consumption}
-                onChange={(e) => setConsumption(e.target.value)}
-                placeholder="0"
-                min="0"
-              />
-              <p className="text-xs text-muted-foreground">
-                Informe o consumo médio mensal
-              </p>
+            <div>
+              <Label htmlFor="supply">Tipo de Fornecimento</Label>
+              <Select value={supplyType} onValueChange={setSupplyType}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo de fornecimento" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Monofásico">Monofásico</SelectItem>
+                  <SelectItem value="Bifásico">Bifásico</SelectItem>
+                  <SelectItem value="Trifásico">Trifásico</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="injectedEnergy">Energia Injetada (kWh)</Label>
+                <Input
+                  id="injectedEnergy"
+                  type="number"
+                  placeholder="Digite a energia injetada"
+                  value={injectedEnergy}
+                  onChange={(e) => setInjectedEnergy(e.target.value)}
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="consumption">Consumo (kWh)</Label>
+                <Input
+                  id="consumption"
+                  type="number"
+                  placeholder="Digite o consumo"
+                  value={consumption}
+                  onChange={(e) => setConsumption(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label>Data de Instalação</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !installationDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {installationDate ? format(installationDate, "dd/MM/yyyy") : "Selecione a data"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={installationDate}
+                    onSelect={setInstallationDate}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
-          
-          <div className="space-y-2">
-            <div className="p-3 bg-muted/50 rounded-lg">
-              <p className="text-sm font-medium text-muted-foreground">
-                Data de instalação: {formatDate(installationDate)}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Faturas corrigidas: {calculateMonthsDifference(installationDate)}
-              </p>
-            </div>
-          </div>
-          
-          <Button 
-            onClick={calculateReimbursement}
-            disabled={!supplyType || !injected || !consumption || loading}
+
+          <Button
+            onClick={calculateTax}
+            disabled={loading}
             className="w-full bg-gradient-to-r from-primary to-primary-hover hover:from-primary-hover hover:to-primary text-primary-foreground"
           >
             <DollarSign className="w-4 h-4 mr-2" />
@@ -256,7 +223,16 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
           
           {result !== null && (
             <>
-               <div data-lov-id="src/components/Calculator/EligibilityCheck.tsx:67:12" data-lov-name="div" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="67" data-component-file="EligibilityCheck.tsx" data-component-name="div" data-component-content="%7B%7D" class="mt-6 p-4 rounded-lg border-l-4 bg-yellow-50 border-l-yellow-400 text-yellow-800"><div data-lov-id="src/components/Calculator/EligibilityCheck.tsx:72:14" data-lov-name="div" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="72" data-component-file="EligibilityCheck.tsx" data-component-name="div" data-component-content="%7B%22className%22%3A%22flex%20items-center%20space-x-2%22%7D" class="flex items-center space-x-2"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-circle-alert w-5 h-5 text-yellow-600" data-lov-id="src/components/Calculator/EligibilityCheck.tsx:76:18" data-lov-name="AlertCircle" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="76" data-component-file="EligibilityCheck.tsx" data-component-name="AlertCircle" data-component-content="%7B%22className%22%3A%22w-5%20h-5%20text-yellow-600%22%7D"><circle cx="12" cy="12" r="10"></circle><line x1="12" x2="12" y1="8" y2="12"></line><line x1="12" x2="12.01" y1="16" y2="16"></line></svg><p data-lov-id="src/components/Calculator/EligibilityCheck.tsx:78:16" data-lov-name="p" data-component-path="src/components/Calculator/EligibilityCheck.tsx" data-component-line="78" data-component-file="EligibilityCheck.tsx" data-component-name="p" data-component-content="%7B%22className%22%3A%22font-medium%22%7D" class="font-medium">FAÇA O LOGIN E ACESSE AS OPÇÕES AVANÇADAS</p></div></div>
+               {!user && (
+                 <div className="mt-6 p-4 rounded-lg border-l-4 bg-yellow-50 border-l-yellow-400 text-yellow-800">
+                   <div className="flex items-center space-x-2">
+                     <AlertCircle className="w-5 h-5 text-yellow-600" />
+                     <Link to="/auth" className="font-medium hover:underline cursor-pointer">
+                       FAÇA O LOGIN E ACESSE AS OPÇÕES AVANÇADAS
+                     </Link>
+                   </div>
+                 </div>
+               )}
               <div className="mt-6 p-6 rounded-lg bg-gradient-to-r from-success/10 to-success/5 border border-success/20">
                 <div className="text-center space-y-2">
                   <p className="text-sm font-medium text-success">
@@ -273,10 +249,28 @@ export function TaxCalculator({ onBackToEligibility, installationDate }: TaxCalc
                   </p>
                 </div>
               </div>
-             
-              <CalculationDetails calculationId={calculationId} />
             </>
           )}
+          
+          <div className="flex flex-col sm:flex-row gap-4 mt-6">
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+              className="flex-1"
+            >
+              <Calculator className="w-4 h-4 mr-2" />
+              NOVO CÁLCULO
+            </Button>
+            {user && (
+              <Button
+                variant="default"
+                className="flex-1"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                OPÇÕES AVANÇADAS
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
