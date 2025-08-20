@@ -63,7 +63,7 @@ const Index = () => {
         <EligibilityCheck onProceedToCalculator={handleProceedToCalculator} />
       )}
       {currentScreen === "calculator" && (
-        <TaxCalculator />
+               <TaxCalculator onBackToEligibility={handleBackToEligibility} installationDate={installationDate} />
       )}
     </>
   );
