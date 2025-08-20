@@ -15,6 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { calculateMonetaryCorrection, getIPCARate } from "@/lib/ipca";
 import { CalculationDetails } from "./CalculationDetails";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 interface TaxCalculatorProps {
   onBackToEligibility: () => void;
